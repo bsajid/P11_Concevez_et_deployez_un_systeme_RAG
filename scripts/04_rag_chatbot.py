@@ -38,17 +38,7 @@ print("Tapez 'quitter' pour arrêter.\n")
 
 
 def rechercher_evenements(question, nb_resultats=5):
-    """
-    Recherche les événements les plus pertinents dans FAISS.
-    Filtre uniquement les événements à venir ou en cours.
 
-    Args:
-        question (str): La question de l'utilisateur
-        nb_resultats (int): Nombre d'événements à récupérer
-
-    Returns:
-        str: Texte avec les événements trouvés
-    """
     from datetime import datetime, timezone
 
     today = datetime.now(timezone.utc)
@@ -99,16 +89,7 @@ def rechercher_evenements(question, nb_resultats=5):
 
 
 def repondre(question):
-    """
-    Génère une réponse à la question de l'utilisateur
-    en combinant FAISS et Mistral.
 
-    Args:
-        question (str): La question de l'utilisateur
-
-    Returns:
-        str: La réponse générée par Mistral
-    """
     # Recherche des événements pertinents
     contexte = rechercher_evenements(question)
 
