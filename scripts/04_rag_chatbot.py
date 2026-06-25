@@ -1,9 +1,3 @@
-"""
-Script du chatbot RAG - Recommandation d'événements culturels en Gironde
-Utilise FAISS pour la recherche et Mistral pour la génération de réponses
-Entrée : vectorstore/faiss_index + vectorstore/metadata.json
-"""
-
 import faiss
 import json
 import numpy as np
@@ -16,10 +10,10 @@ from dotenv import load_dotenv
 # Chargement de la clé API
 load_dotenv()
 
-print("=== CHATBOT RAG — Événements culturels en Gironde ===\n")
+print(" CHATBOT RAG — Événements culturels en Gironde \n")
 
 # Chargement de l'index FAISS
-print("Chargement de la base vectorielle...")
+print("Chargement de la base vectorielle")
 index = faiss.read_index("vectorstore/faiss_index")
 
 # Chargement des métadonnées
@@ -27,11 +21,11 @@ with open("vectorstore/metadata.json", encoding="utf-8") as f:
     metadata = json.load(f)
 
 # Chargement du modèle d'embedding
-print("Chargement du modèle d'embedding...")
+print("Chargement du modèle d'embedding")
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Connexion à Mistral via LangChain
-print("Connexion à Mistral...")
+print("Connexion à Mistral")
 llm = ChatMistralAI(
     model="mistral-small-latest",
     mistral_api_key=os.getenv("MISTRAL_API_KEY"),
@@ -40,7 +34,7 @@ llm = ChatMistralAI(
 
 print("\nTout est prêt ! Posez vos questions sur les événements culturels en Gironde.")
 print("Tapez 'quitter' pour arrêter.\n")
-print("-" * 60)
+
 
 
 def rechercher_evenements(question, nb_resultats=5):
@@ -157,7 +151,6 @@ while True:
         print("Veuillez poser une question.")
         continue
 
-    print("\nRecherche en cours...")
+    print("\nRecherche en cours")
     reponse = repondre(question)
     print(f"\nAssistant : {reponse}")
-    print("-" * 60)
