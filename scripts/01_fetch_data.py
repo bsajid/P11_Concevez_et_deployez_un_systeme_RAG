@@ -1,113 +1,113 @@
+import requests
 import pandas as pd
 import re
 from datetime import datetime, timedelta, timezone
 
-print("NETTOYAGE DES DONNÉES\n")
-
-# Chargement des données
-df = pd.read_csv("data/events_gironde_clean.csv", encoding="utf-8-sig")
-print(f"Nombre d'événements avant nettoyage : {len(df)}")
-
-# Etape 1 : Supprime les doublons
-df = df.drop_duplicates(subset=["uid"])
-print(f"Après suppression des doublons         : {len(df)}")
-
-# Etape 2 : Supprime les événements sans titre
-df = df[df["titre"].notna() & (df["titre"] != "")]
-print(f"Après suppression sans titre           : {len(df)}")
-
-# Etape 3 : Nettoie les balises HTML et caractères mal encodés etc
-def remove_html_tags(text):
-    """Supprime les balises HTML et nettoie le texte :
-    - Supprime les balises HTML
-    - Corrige les caractères mal encodés
-    - Normalise les espaces, tabulations et sauts de ligne
-    - Corrige les textes multi-lignes
-    """
-    if pd.isna(text) or text == "":
-        return ""
-
-    # Étape 1 : Supprime les balises HTML
-    clean = re.sub(r"<[^>]+>", " ", str(text))
-
-    # Supprime les entités HTML (&amp; &nbsp; &#9; etc.)
-    clean = re.sub(r"&[a-zA-Z]+;|&#\d+;", " ", clean)
-    
-    # Étape 2 : Corrige les caractères mal encodés (ex: Ã©, Â, â€˜)
-    try:
-        clean = clean.encode("latin1").decode("utf-8")
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        pass
-
-    # Étape 3 : Normalise les sauts de ligne et tabulations
-    clean = clean.replace("\n", " ").replace("\r", " ").replace("\t", " ")
-
-    # Étape 4 : Supprime les espaces multiples
-    clean = re.sub(r"\s+", " ", clean).strip()
-
-    return clean
-
-# Étape 3 : Nettoie les balises HTML et caractères spéciaux sur toutes les colonnes texte
-df["titre"] = df["titre"].apply(remove_html_tags)
-df["description"] = df["description"].apply(remove_html_tags)
-df["description_longue"] = df["description_longue"].apply(remove_html_tags)
-df["adresse"] = df["adresse"].apply(remove_html_tags)
-df["lieu"] = df["lieu"].apply(remove_html_tags)
-df["ville"] = df["ville"].apply(remove_html_tags)
-df["date_affichee"] = df["date_affichee"].apply(remove_html_tags)
-print("Nettoyage HTML terminé sur toutes les colonnes texte")
-
-# Etape 4 : Remplace les valeurs manquantes par des chaînes vides
-df = df.fillna("")
-
-# Etape 5 : Supprime les événements de plus d'un an
+# Date d'aujourd'hui et date il y a un an
 today = datetime.now(timezone.utc)
 one_year_ago = today - timedelta(days=365)
-dates = pd.to_datetime(df["date_fin"], utc=True, errors="coerce")
-df = df[dates >= one_year_ago]
-df = df.reset_index(drop=True)
-print(f"Après filtre date stricte (< 1 an)     : {len(df)}")
+date_min = one_year_ago.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-# Etape 6 : Construit le texte complet pour la vectorisation
-def build_text_content(row):
-    """Construit un texte complet pour chaque événement."""
-    parts = []
-    if row["titre"]:
-        parts.append(f"Evénement : {row['titre']}")
-    if row["description"]:
-        parts.append(f"Description : {row['description']}")
-    if row["description_longue"]:
-        parts.append(f"Détails : {row['description_longue']}")
-    if row["lieu"]:
-        parts.append(f"Lieu : {row['lieu']}")
-    if row["adresse"]:
-        parts.append(f"Adresse : {row['adresse']}")
-    if row["ville"]:
-        parts.append(f"Ville : {row['ville']}")
-    if row["date_affichee"]:
-        parts.append(f"Date : {row['date_affichee']}")
-    if row["categorie"]:
-        parts.append(f"Catégorie : {row['categorie']}")
-    if row["mots_cles"]:
-        parts.append(f"Mots-clés : {row['mots_cles']}")
-    return " | ".join(parts)
+print(f"Filtre date : événements avec lastdate_end >= {one_year_ago.strftime('%Y-%m-%d')}")
+print(f"Filtre lieu : Gironde")
 
-df["texte_complet"] = df.apply(build_text_content, axis=1)
-print(f"Texte complet construit")
 
-# Etape 7 : Supprime les événements sans contenu
-df = df[df["texte_complet"].str.len() > 20]
-print(f"Après suppression contenu vide         : {len(df)}")
+# URL de l'API
+API_URL = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/evenements-publics-openagenda/records"
 
-print(f"\nNombre d'événements après nettoyage : {len(df)}")
+# Fonction de nettoyage des caractères spéciaux
+def clean(text):
+    if not text:
+        return ""
+    text = re.sub(r"<[^>]+>", " ", str(text))
+    text = re.sub(r"&[a-zA-Z]+;|&#\d+;", " ", text)
+    try:
+        text = text.encode("latin1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass
+    text = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
-# Aperçu
-print(f"\nExemple de texte complet (premier événement) :")
-print("-" * 60)
-print(df["texte_complet"].iloc[0])
-print("-" * 60)
+# Fonction pour récupérer les événements avec un filtre donné
+def fetch_events(where_filter, label=""):
+    records = []
+    offset = 0
+    limit = 100
+
+    while True:
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "lang": "fr",
+            "refine": "location_department:Gironde",
+            "where": where_filter
+        }
+
+        response = requests.get(API_URL, params=params)
+
+        if response.status_code != 200:
+            break
+
+        data = response.json()
+        results = data.get("results", [])
+        total = data.get("total_count", 0)
+
+        if not results:
+            break
+
+        for event in results:
+            records.append({
+                "uid": event.get("uid", ""),
+                "titre": clean(event.get("title_fr", "")),
+                "description": clean(event.get("description_fr", "")),
+                "description_longue": clean(event.get("longdescription_fr", "")),
+                "date_debut": event.get("firstdate_begin", ""),
+                "date_fin": event.get("lastdate_end", ""),
+                "date_affichee": clean(event.get("daterange_fr", "")),
+                "ville": clean(event.get("location_city", "")),
+                "adresse": clean(event.get("location_address", "")),
+                "lieu": clean(event.get("location_name", "")),
+                "departement": event.get("location_department", ""),
+                "region": event.get("location_region", ""),
+                "url": event.get("canonicalurl", ""),
+                "image": event.get("image", ""),
+                "categorie": event.get("category", ""),
+                "mots_cles": event.get("keywords_fr", ""),
+            })
+
+        offset += limit
+
+        if offset >= min(total, 9900):
+            break
+
+    print(f"  {label} : {len(records)} événements récupérés (total API : {total})")
+    return records
+
+# Récupération en deux passes :
+# Passe 1 : Bordeaux (ville principale, beaucoup d'événements)
+# Passe 2 : Reste de la Gironde (toutes les villes sauf Bordeaux)
+print("Passe 1 : Bordeaux")
+records_bordeaux = fetch_events(
+    f'lastdate_end>="{date_min}" AND location_city="Bordeaux"',
+    "Bordeaux"
+)
+
+print("Passe 2 : Reste de la Gironde")
+records_reste = fetch_events(
+    f'lastdate_end>="{date_min}" AND location_city!="Bordeaux"',
+    "Reste Gironde"
+)
+
+# Fusion et suppression des doublons
+all_records = records_bordeaux + records_reste
+print(f"\nTotal avant déduplication : {len(all_records)}")
+
+df = pd.DataFrame(all_records)
+df = df.drop_duplicates(subset=["uid"])
+print(f"Total après déduplication : {len(df)}")
 
 # Sauvegarde
-df.to_csv("data/events_gironde_processed.csv", index=False, encoding="utf-8-sig", lineterminator="\n")
-print(f"\nDonnées sauvegardées dans : data/events_gironde_processed.csv")
-print("Nettoyage terminé avec succès !")
+df.to_csv("data/events_gironde_clean.csv", index=False, encoding="utf-8-sig", quoting=1)
+print(f"\nDonnées sauvegardées dans : data/events_gironde_clean.csv")
+print(f"Nombre de lignes : {len(df)}")
