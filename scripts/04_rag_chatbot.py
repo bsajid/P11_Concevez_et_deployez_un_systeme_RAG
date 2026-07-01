@@ -47,7 +47,7 @@ def rechercher_evenements(question, nb_resultats=5):
     vector = model.encode([question]).astype("float32")
 
     # On cherche plus de résultats pour compenser le filtre de date
-    distances, indices = index.search(vector, nb_resultats * 10)
+    distances, indices = index.search(vector, nb_resultats * 5)
 
     # Construction du contexte avec uniquement les événements à venir
     contexte = ""
