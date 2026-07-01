@@ -27,7 +27,7 @@ Les données proviennent de la plateforme Open Agenda et couvrent les événemen
 
 - Python 3.11.9
 - Une clé API Mistral (https://console.mistral.ai)
-- Le fichier de données Open Agenda : evenements-publics-openagenda.json à placer dans le dossier data/
+- Connexion internet (pour l'API Open Agenda)
 
 ---
 
@@ -35,7 +35,7 @@ Les données proviennent de la plateforme Open Agenda et couvrent les événemen
 
 ### 1. Cloner le projet
 ```bash
-git clone https://github.com/ton-username/P11_Concevez_et_deployez_un_systeme_RAG.git
+git clone https://github.com/bsajid/P11_Concevez_et_deployez_un_systeme_RAG.git
 cd P11_Concevez_et_deployez_un_systeme_RAG
 ```
 
@@ -51,7 +51,7 @@ pip install -r requirements.txt
 ```
 
 ### 4. Configurer la clé API Mistral
-Crée un fichier .env à la racine du projet :
+Crée un fichier `.env` à la racine du projet :
 ```
 MISTRAL_API_KEY=ta_clé_api_mistral
 ```
@@ -84,14 +84,13 @@ python -m pytest tests/test_data.py -v
 ```
 projet/
 ├── data/
-│   ├── evenements-publics-openagenda.json  → Source brute Open Agenda (4.6 Go)
 │   ├── events_gironde_clean.csv            → Événements Gironde filtrés (moins d'un an)
 │   └── events_gironde_processed.csv        → Événements nettoyés et prêts
 ├── scripts/
-│   ├── 01_fetch_data.py                    → Lecture et filtre des données
-│   ├── 02_preprocess_data.py               → Nettoyage et construction du texte
-│   ├── 03_build_vectorstore.py             → Vectorisation et création FAISS
-│   └── 04_rag_chatbot.py                   → Chatbot RAG (LangChain + Mistral)
+│   ├── 01_fetch_data.py     → Récupération via API Open Agenda + filtres Gironde / < 1 an
+│   ├── 02_preprocess_data.py → Nettoyage et construction du texte
+│   ├── 03_build_vectorstore.py → Vectorisation et création FAISS
+│   └── 04_rag_chatbot.py    → Chatbot RAG (LangChain + Mistral)
 ├── tests/
 │   └── test_data.py                        → 8 tests unitaires sur les données
 ├── vectorstore/
@@ -132,11 +131,11 @@ Réponse en français
 
 ## Résultats du POC
 
-- 12435 événements culturels en Gironde indexés
-- Recherche sémantique fonctionnelle sur la base FAISS
+- 12 869 événements culturels en Gironde indexés via l'API Open Agenda
+- Recherche sémantique fonctionnelle sur la base FAISS (384 dimensions)
 - Réponses générées en français par Mistral AI
 - 8 tests unitaires passent avec succès
-
+- Score d'évaluation : 5/5 = 100% sur le jeu de données annoté
 ---
 
 ## Recommandations pour la version finale
